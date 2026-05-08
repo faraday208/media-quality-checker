@@ -24,23 +24,6 @@ def cli():
 
 
 @cli.command()
-@click.option('--host', default=None, help='API host')
-@click.option('--port', default=None, type=int, help='API port')
-def api(host, port):
-    """FastAPI sunucusunu başlat."""
-    import uvicorn
-
-    config = load_config()
-    server_config = config.get('server', {})
-
-    host = host or server_config.get('host', '0.0.0.0')
-    port = port or server_config.get('port', 8101)
-
-    click.echo(f"Starting Image Quality Checker API on {host}:{port}")
-    uvicorn.run("api.main:app", host=host, port=port, reload=False)
-
-
-@cli.command()
 @click.argument('image_path')
 @click.option('--check', '-c', multiple=True,
               type=click.Choice(['blur', 'brightness', 'contrast', 'bpp', 'all']),
