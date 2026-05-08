@@ -1,0 +1,216 @@
+{
+  "name": "[SUB] Image Quality Checker - BPP Check",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "trigger",
+      "name": "Input",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Gelen parametreleri al\nconst input = items[0].json;\n\n// Zorunlu: directory\nif (!input.directory) {\n  throw new Error('directory parametresi zorunlu!');\n}\n\nconst config = {\n  directory: input.directory,\n  limit: input.limit || 0\n};\n\nreturn [{ json: config }];"
+      },
+      "id": "config-node",
+      "name": "Build Config",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8101/bpp/directory",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "http-bpp",
+      "name": "BPP Check",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "results",
+        "options": {}
+      },
+      "id": "split-results",
+      "name": "Split Results",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-compressed",
+              "leftValue": "={{ $json.is_over_compressed }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "filter-compressed",
+      "name": "Filter Over-Compressed",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [1120, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-ok",
+              "leftValue": "={{ $json.valid }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "filter-ok",
+      "name": "Filter OK",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [1120, 400]
+    },
+    {
+      "parameters": {
+        "content": "## [SUB] BPP Check\n\n**Giriş Parametreleri:**\n```json\n{\n  \"directory\": \"/path/to/images\",\n  \"limit\": 0\n}\n```\n\n---\n\n### Zorunlu:\n- `directory`: Klasör yolu\n\n### Opsiyonel:\n- `limit`: Max dosya (0=all)\n\n---\n\n### Metod:\nBytes Per Pixel\n\nbpp = file_size / total_pixels\n\nDüşük BPP = aşırı sıkıştırılmış\nYüksek BPP = iyi kalite",
+        "height": 360,
+        "width": 260
+      },
+      "id": "sticky-input",
+      "name": "Sticky Input",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [200, -80]
+    },
+    {
+      "parameters": {
+        "content": "## Response\n\n| Alan | Açıklama |\n|------|----------|\n| `bpp` | Bytes per pixel |\n| `file_size_kb` | Dosya boyutu |\n| `width`, `height` | Boyutlar |\n| `total_pixels` | Toplam piksel |\n| `threshold` | Min BPP (0.1) |\n| `is_over_compressed` | true/false |\n| `valid` | Kalite geçti mi |\n| `reason` | \"over_compressed\" veya null |",
+        "height": 300,
+        "width": 280
+      },
+      "id": "sticky-response",
+      "name": "Sticky Response",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [480, -80]
+    },
+    {
+      "parameters": {
+        "content": "### OK\nYeterli kalite",
+        "height": 80,
+        "width": 140,
+        "color": 4
+      },
+      "id": "sticky-ok",
+      "name": "Sticky OK",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [1100, 500]
+    },
+    {
+      "parameters": {
+        "content": "### Over-Compressed\nAşırı sıkıştırılmış",
+        "height": 80,
+        "width": 170,
+        "color": 2
+      },
+      "id": "sticky-compressed",
+      "name": "Sticky Compressed",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [1100, 120]
+    }
+  ],
+  "connections": {
+    "Input": {
+      "main": [
+        [
+          {
+            "node": "Build Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Config": {
+      "main": [
+        [
+          {
+            "node": "BPP Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "BPP Check": {
+      "main": [
+        [
+          {
+            "node": "Split Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Results": {
+      "main": [
+        [
+          {
+            "node": "Filter Over-Compressed",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Filter OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": []
+}

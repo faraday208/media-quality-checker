@@ -1,0 +1,514 @@
+{
+  "name": "[SUB] Image Quality Checker - Full Check",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "trigger",
+      "name": "Input",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Gelen parametreleri al\nconst input = items[0].json;\n\nif (!input.directory) {\n  throw new Error('directory parametresi zorunlu!');\n}\n\n// API URL sabit\nconst API_URL = 'http://127.0.0.1:8101';\n\n// API Health Check config\nconst healthConfig = {\n  api_url: API_URL,\n  api_name: 'Image Quality Checker API',\n  health_endpoint: '/health',\n  start_command: input.start_command || '',\n  max_retries: 3,\n  wait_seconds: 5\n};\n\n// Check config\nconst checkConfig = {\n  directory: input.directory,\n  limit: input.limit || 0\n};\n\nreturn [{ json: { healthConfig, checkConfig, api_url: API_URL } }];"
+      },
+      "id": "prepare-config",
+      "name": "Prepare Config",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "[UTILS] API Health Check & Retry"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "api_url": "={{ $json.healthConfig.api_url }}",
+            "api_name": "={{ $json.healthConfig.api_name }}",
+            "health_endpoint": "={{ $json.healthConfig.health_endpoint }}",
+            "start_command": "={{ $json.healthConfig.start_command }}",
+            "max_retries": "={{ $json.healthConfig.max_retries }}",
+            "wait_seconds": "={{ $json.healthConfig.wait_seconds }}"
+          }
+        }
+      },
+      "id": "api-health-check",
+      "name": "API Health Check",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "api-success",
+              "leftValue": "={{ $json.success }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "api-ok-check",
+      "name": "API OK?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// API failed\nconst prepareConfig = $('Prepare Config').item.json;\nconst apiResult = items[0].json;\n\nreturn [{\n  json: {\n    valid: false,\n    reason: 'api_unavailable',\n    error: apiResult.message || 'API başlatılamadı',\n    directory: prepareConfig.checkConfig.directory\n  }\n}];"
+      },
+      "id": "api-failed",
+      "name": "API Failed",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 420]
+    },
+    {
+      "parameters": {
+        "jsCode": "// API OK - check config'i al\nconst prepareConfig = $('Prepare Config').item.json;\nreturn [{ json: prepareConfig.checkConfig }];"
+      },
+      "id": "get-check-config",
+      "name": "Get Check Config",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 180]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8101/blur/directory",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ directory: $json.directory, limit: $json.limit }) }}",
+        "options": {}
+      },
+      "id": "blur-check",
+      "name": "1. Blur Check",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1340, 180]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8101/brightness/directory",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ directory: $('Get Check Config').item.json.directory, limit: $('Get Check Config').item.json.limit }) }}",
+        "options": {}
+      },
+      "id": "brightness-check",
+      "name": "2. Brightness Check",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1560, 180]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8101/contrast/directory",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ directory: $('Get Check Config').item.json.directory, limit: $('Get Check Config').item.json.limit }) }}",
+        "options": {}
+      },
+      "id": "contrast-check",
+      "name": "3. Contrast Check",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1780, 180]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8101/bpp/directory",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ directory: $('Get Check Config').item.json.directory, limit: $('Get Check Config').item.json.limit }) }}",
+        "options": {}
+      },
+      "id": "bpp-check",
+      "name": "4. BPP Check",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2000, 180]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Tüm sonuçları birleştir\nconst blurResults = $('1. Blur Check').item.json.results;\nconst brightnessResults = $('2. Brightness Check').item.json.results;\nconst contrastResults = $('3. Contrast Check').item.json.results;\nconst bppResults = $('4. BPP Check').item.json.results;\nconst directory = $('Get Check Config').item.json.directory;\n\n// Dosya bazında birleştir\nconst combined = {};\n\nblurResults.forEach(r => {\n  combined[r.filename] = {\n    filename: r.filename,\n    blur: { valid: r.valid, score: r.blur_score, is_blurry: r.is_blurry },\n    brightness: null,\n    contrast: null,\n    bpp: null,\n    reasons: r.valid ? [] : [r.reason]\n  };\n});\n\nbrightnessResults.forEach(r => {\n  if (combined[r.filename]) {\n    combined[r.filename].brightness = { \n      valid: r.valid, \n      value: r.brightness, \n      is_too_dark: r.is_too_dark, \n      is_too_bright: r.is_too_bright \n    };\n    if (!r.valid) combined[r.filename].reasons.push(r.reason);\n  }\n});\n\ncontrastResults.forEach(r => {\n  if (combined[r.filename]) {\n    combined[r.filename].contrast = { \n      valid: r.valid, \n      value: r.contrast, \n      is_low_contrast: r.is_low_contrast \n    };\n    if (!r.valid) combined[r.filename].reasons.push(r.reason);\n  }\n});\n\nbppResults.forEach(r => {\n  if (combined[r.filename]) {\n    combined[r.filename].bpp = { \n      valid: r.valid, \n      value: r.bpp, \n      is_over_compressed: r.is_over_compressed \n    };\n    if (!r.valid) combined[r.filename].reasons.push(r.reason);\n  }\n});\n\n// Final valid durumu hesapla\nconst results = Object.values(combined).map(item => ({\n  ...item,\n  valid: item.blur?.valid && item.brightness?.valid && item.contrast?.valid && item.bpp?.valid,\n  reason: item.reasons.length > 0 ? item.reasons.join(', ') : null\n}));\n\n// Her dosya için ayrı item döndür\nreturn results.map(r => ({ json: { ...r, directory } }));"
+      },
+      "id": "merge-results",
+      "name": "Merge Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2220, 180]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-valid",
+              "leftValue": "={{ $json.valid }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "filter-valid",
+      "name": "Filter Valid",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [2440, 80]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-invalid",
+              "leftValue": "={{ $json.valid }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "filter-invalid",
+      "name": "Filter Invalid",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [2440, 280]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8101/metadata/process-and-save",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ input_path: $json.directory + '/' + $json.filename, output_path: $json.directory + '/' + $json.filename, quality: 95 }) }}",
+        "options": {}
+      },
+      "id": "metadata-process",
+      "name": "5. Metadata Process",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2660, 80]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Metadata işleme sonuçlarını birleştir\nconst validItem = $('Filter Valid').item.json;\nconst processResult = items[0].json;\n\nreturn [{\n  json: {\n    ...validItem,\n    metadata_processed: {\n      success: processResult.success,\n      rotation_applied: processResult.rotation_applied,\n      metadata_stripped: processResult.metadata_stripped,\n      color_converted: processResult.color_converted,\n      file_size_reduction: processResult.file_size_reduction_bytes\n    },\n    original_metadata: processResult.metadata_info\n  }\n}];"
+      },
+      "id": "enrich-with-metadata",
+      "name": "Process Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2880, 80]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8101/move-file",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ source_path: $json.directory + '/' + $json.filename, target_directory: $json.directory + '/invalid', create_directory: true }) }}",
+        "options": {}
+      },
+      "id": "move-invalid",
+      "name": "Move to Invalid",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2660, 280]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Move sonucunu invalid item ile birleştir\nconst invalidItem = $('Filter Invalid').item.json;\nconst moveResult = items[0].json;\n\nreturn [{\n  json: {\n    ...invalidItem,\n    moved: moveResult.success,\n    moved_to: moveResult.target\n  }\n}];"
+      },
+      "id": "invalid-result",
+      "name": "Invalid Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2880, 280]
+    },
+    {
+      "parameters": {
+        "content": "## [SUB] Quality Check - Full\n\n**API:** `http://127.0.0.1:8101`\n\n---\n\n**Giriş:**\n```json\n{\n  \"directory\": \"/path/to/images\",\n  \"limit\": 0,\n  \"start_command\": \"...\"\n}\n```\n\n---\n\n### Zorunlu:\n- `directory`: Klasör yolu\n\n### Opsiyonel:\n- `limit`: Max dosya (0=all)\n- `start_command`: API başlatma",
+        "height": 340,
+        "width": 260
+      },
+      "id": "sticky-input",
+      "name": "Sticky Input",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [200, -60]
+    },
+    {
+      "parameters": {
+        "content": "## Kontroller\n\n1. **Blur** - Laplacian variance\n2. **Brightness** - Mean pixel\n3. **Contrast** - Std deviation\n4. **BPP** - Bytes per pixel\n5. **Metadata Process**\n   - Rotation düzelt\n   - GPS/EXIF temizle\n   - RGB'ye çevir",
+        "height": 220,
+        "width": 240
+      },
+      "id": "sticky-checks",
+      "name": "Sticky Checks",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [480, -60]
+    },
+    {
+      "parameters": {
+        "content": "### Valid + Process\nRotation düzeltildi\nMetadata temizlendi\nRGB'ye çevrildi",
+        "height": 100,
+        "width": 220,
+        "color": 4
+      },
+      "id": "sticky-valid",
+      "name": "Sticky Valid",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [2860, -20]
+    },
+    {
+      "parameters": {
+        "content": "### Invalid → Move\n`{directory}/invalid/` klasörüne taşı",
+        "height": 80,
+        "width": 220,
+        "color": 2
+      },
+      "id": "sticky-invalid",
+      "name": "Sticky Invalid",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [2640, 380]
+    },
+    {
+      "parameters": {
+        "content": "### Quality Pipeline\nBlur → Brightness → Contrast → BPP",
+        "height": 60,
+        "width": 280,
+        "color": 6
+      },
+      "id": "sticky-pipeline",
+      "name": "Sticky Pipeline",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [1340, 80]
+    }
+  ],
+  "connections": {
+    "Input": {
+      "main": [
+        [
+          {
+            "node": "Prepare Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Config": {
+      "main": [
+        [
+          {
+            "node": "API Health Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "API Health Check": {
+      "main": [
+        [
+          {
+            "node": "API OK?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "API OK?": {
+      "main": [
+        [
+          {
+            "node": "Get Check Config",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "API Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Check Config": {
+      "main": [
+        [
+          {
+            "node": "1. Blur Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "1. Blur Check": {
+      "main": [
+        [
+          {
+            "node": "2. Brightness Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2. Brightness Check": {
+      "main": [
+        [
+          {
+            "node": "3. Contrast Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "3. Contrast Check": {
+      "main": [
+        [
+          {
+            "node": "4. BPP Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "4. BPP Check": {
+      "main": [
+        [
+          {
+            "node": "Merge Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Results": {
+      "main": [
+        [
+          {
+            "node": "Filter Valid",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Filter Invalid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Valid": {
+      "main": [
+        [
+          {
+            "node": "5. Metadata Process",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Invalid": {
+      "main": [
+        [
+          {
+            "node": "Move to Invalid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "5. Metadata Process": {
+      "main": [
+        [
+          {
+            "node": "Process Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Move to Invalid": {
+      "main": [
+        [
+          {
+            "node": "Invalid Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": []
+}

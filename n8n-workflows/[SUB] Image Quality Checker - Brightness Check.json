@@ -1,0 +1,263 @@
+{
+  "name": "[SUB] Image Quality Checker - Brightness Check",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "trigger",
+      "name": "Input",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Gelen parametreleri al\nconst input = items[0].json;\n\n// Zorunlu: directory\nif (!input.directory) {\n  throw new Error('directory parametresi zorunlu!');\n}\n\nconst config = {\n  directory: input.directory,\n  limit: input.limit || 0\n};\n\nreturn [{ json: config }];"
+      },
+      "id": "config-node",
+      "name": "Build Config",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8101/brightness/directory",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "http-brightness",
+      "name": "Brightness Check",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "results",
+        "options": {}
+      },
+      "id": "split-results",
+      "name": "Split Results",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-dark",
+              "leftValue": "={{ $json.is_too_dark }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "filter-dark",
+      "name": "Filter Dark",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [1120, 140]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-bright",
+              "leftValue": "={{ $json.is_too_bright }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "filter-bright",
+      "name": "Filter Bright",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-ok",
+              "leftValue": "={{ $json.valid }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "filter-ok",
+      "name": "Filter OK",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [1120, 460]
+    },
+    {
+      "parameters": {
+        "content": "## [SUB] Brightness Check\n\n**Giriş Parametreleri:**\n```json\n{\n  \"directory\": \"/path/to/images\",\n  \"limit\": 0\n}\n```\n\n---\n\n### Zorunlu:\n- `directory`: Klasör yolu\n\n### Opsiyonel:\n- `limit`: Max dosya (0=all)\n\n---\n\n### Metod:\nMean Pixel Value (0-255)\n\n< 30 = çok karanlık\n> 225 = çok parlak",
+        "height": 340,
+        "width": 260
+      },
+      "id": "sticky-input",
+      "name": "Sticky Input",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [200, -60]
+    },
+    {
+      "parameters": {
+        "content": "## Response\n\n| Alan | Açıklama |\n|------|----------|\n| `brightness` | Ortalama parlaklık |\n| `min_threshold` | Alt eşik (30) |\n| `max_threshold` | Üst eşik (225) |\n| `is_too_dark` | true/false |\n| `is_too_bright` | true/false |\n| `valid` | Kalite geçti mi |\n| `reason` | \"too_dark\", \"too_bright\" veya null |",
+        "height": 280,
+        "width": 260
+      },
+      "id": "sticky-response",
+      "name": "Sticky Response",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [480, -60]
+    },
+    {
+      "parameters": {
+        "content": "### OK\nUygun parlaklık",
+        "height": 80,
+        "width": 140,
+        "color": 4
+      },
+      "id": "sticky-ok",
+      "name": "Sticky OK",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [1100, 560]
+    },
+    {
+      "parameters": {
+        "content": "### Too Dark\nÇok karanlık",
+        "height": 80,
+        "width": 140,
+        "color": 2
+      },
+      "id": "sticky-dark",
+      "name": "Sticky Dark",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [1100, 60]
+    },
+    {
+      "parameters": {
+        "content": "### Too Bright\nÇok parlak/yanık",
+        "height": 80,
+        "width": 140,
+        "color": 5
+      },
+      "id": "sticky-bright",
+      "name": "Sticky Bright",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [1100, 220]
+    }
+  ],
+  "connections": {
+    "Input": {
+      "main": [
+        [
+          {
+            "node": "Build Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Config": {
+      "main": [
+        [
+          {
+            "node": "Brightness Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Brightness Check": {
+      "main": [
+        [
+          {
+            "node": "Split Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Results": {
+      "main": [
+        [
+          {
+            "node": "Filter Dark",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Filter Bright",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Filter OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": []
+}
