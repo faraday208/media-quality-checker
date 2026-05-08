@@ -88,7 +88,7 @@ uv run python run.py --undo ./rejected/quality_report.json
 
 ---
 
-## 📋 Operation modes
+## 📋 Operation modes — özet
 
 | Mod | Komut | Etki | Undo |
 |---|---|---|---|
