@@ -1,43 +1,26 @@
-# Image Quality Checker - Ayarlar
-
-# Sunucu ayarları
-server:
-  host: "0.0.0.0"
-  port: 8101
+# Media Quality Checker — varsayılan eşikler
+# CLI flag'leri (--blur-threshold, --min-brightness, vs.) bu değerleri ezer.
 
 # Quality Check Thresholds
 quality:
-  # Blur (Laplacian variance)
-  # Düşük = bulanık, Yüksek = keskin
+  # Blur (Laplacian variance) — düşük = bulanık
   blur_threshold: 100
 
-  # Brightness (mean pixel value 0-255)
+  # Brightness (mean pixel 0-255)
   brightness:
-    min: 30    # Altı = çok karanlık
-    max: 225   # Üstü = çok parlak/yanık
+    min: 30    # Altı çok karanlık
+    max: 225   # Üstü çok parlak/yanık
 
-  # Contrast (standard deviation)
-  # Düşük = düz/soluk görüntü
+  # Contrast (standard deviation) — düşük = düz/soluk
   contrast_threshold: 15
 
-  # BPP (bytes per pixel)
-  # Düşük = aşırı sıkıştırılmış
+  # BPP (bytes per pixel) — düşük = aşırı sıkıştırılmış
   bpp:
     min: 0.1
 
-# Metadata İşleme Ayarları
+# Metadata İşleme (opsiyonel, MetadataProcessor için)
 metadata:
-  # EXIF rotation düzeltme (yanlış yönlenmiş resimleri düzelt)
   auto_orient: true
-
-  # Metadata temizleme (GPS, kamera bilgisi, kişisel veri)
-  # Dosya boyutunu küçültür, privacy sağlar
   strip_metadata: true
-
-  # sRGB renk profiline dönüştür
-  # Farklı color profile'lar renk kaymasına neden olabilir
   convert_to_srgb: true
-
-  # ICC profili koru (strip_metadata true olsa bile)
-  # false önerilir - sRGB'ye çevirmek daha tutarlı
   preserve_icc: false

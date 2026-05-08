@@ -1,19 +1,29 @@
 [project]
-name = "image-quality-checker"
-version = "0.1.0"
-description = "Image quality assessment: blur, brightness, contrast, BPP, metadata checks"
+name = "media-quality-checker"
+version = "1.0.0"
+description = "Media quality assessment: blur (Laplacian), brightness, contrast, BPP — composite check + move/delete + undo"
 requires-python = ">=3.11"
 readme = "README.md"
+license = { file = "LICENSE" }
 authors = [{ name = "faraday208" }]
-keywords = ["image", "quality", "blur", "dataset", "preprocessing"]
+keywords = ["media", "image", "quality", "blur", "dataset", "preprocessing", "ai"]
 dependencies = [
     "numpy>=1.24.0",
     "opencv-python>=4.8.0",
     "pillow>=10.0.0",
     "pyyaml>=6.0",
-    "click>=8.1.0",
     "tqdm>=4.65.0",
 ]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-q --tb=short"
 
 [tool.uv]
 package = false

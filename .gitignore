@@ -22,15 +22,16 @@ uv.lock
 logs/
 reports/
 flagged/
+*_report.json
 
-# Datasets (büyük binary)
+# Datasets
 data/
 datasets/
 *.tar
 *.zip
 *.7z
 
-# Modeller (asla repo'da değil)
+# Modeller
 *.safetensors
 *.ckpt
 *.pt
