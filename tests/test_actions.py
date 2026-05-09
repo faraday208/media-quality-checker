@@ -38,6 +38,41 @@ def test_action_move_relocates_invalid(mixed_dataset: Path, tmp_path_factory,
     assert "dark.jpg" in moved_names
 
 
+def test_action_move_preserves_tree_hierarchy(tmp_path: Path, quality_config: dict):
+    """Recursive scan + tree mode dataset → invalid'ler subdir hiyerarşisini
+    korumalı (collision'a karşı `_unique_target` değil `relative_to(src)` mirror)."""
+    import numpy as np
+    from PIL import Image, ImageFilter
+
+    src = tmp_path / "ds"
+    sub_a = src / "tatil-2024"
+    sub_b = src / "tatil-2025"
+    sub_a.mkdir(parents=True)
+    sub_b.mkdir(parents=True)
+
+    # İki alt klasörde AYNI isimli blurry görseller (collision senaryosu)
+    arr = np.random.randint(0, 256, (256, 256, 3), dtype=np.uint8)
+    blurry_a = Image.fromarray(arr).filter(ImageFilter.GaussianBlur(radius=10))
+    blurry_b = Image.fromarray(arr).filter(ImageFilter.GaussianBlur(radius=10))
+    blurry_a.save(sub_a / "IMG_001.jpg", "JPEG", quality=85)
+    blurry_b.save(sub_b / "IMG_001.jpg", "JPEG", quality=85)
+
+    rejected = tmp_path / "rejected"
+    sr = _scan(src, quality_config)
+    ar = apply_action(sr.results, source_root=src,
+                      action="move", invalid_dir=rejected)
+
+    # İki dosya, ikisi de subdir altında, ikisi de yerinde duran isim
+    moved = {Path(e.moved_to).relative_to(rejected) for e in ar.entries}
+    assert Path("tatil-2024/IMG_001.jpg") in moved
+    assert Path("tatil-2025/IMG_001.jpg") in moved
+    # Flat collision yok (eski davranış: IMG_001_1.jpg suffix)
+    assert all("_1.jpg" not in str(p) for p in moved)
+    # Original'lar gitti
+    assert not (sub_a / "IMG_001.jpg").exists()
+    assert not (sub_b / "IMG_001.jpg").exists()
+
+
 def test_action_move_dry_run_no_filesystem_change(mixed_dataset: Path, tmp_path_factory,
                                                     quality_config: dict):
     rejected = tmp_path_factory.mktemp("rejected")

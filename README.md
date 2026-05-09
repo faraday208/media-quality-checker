@@ -233,6 +233,8 @@ uv run pytest
 
 ## 🏷️ Sürüm
 
+**v1.0.1** — pipeline integrasyonu cross-tool tutarlılık: **tree-preserving move**. Recursive scan + tree-mode dataset (00 organize çıktısı) için `--invalid-action move` artık subdir hiyerarşisini koruyor (`relative_to(source_root)` mirror). Eski davranışta `dst_root / original.name` flat'lemekteydi, aynı isimli dosyalar `_unique_target` ile `_1`, `_2` suffix'i alıyor, hangi alt klasörden geldiği bilgisi kayboluyordu. +1 regression test (45 toplam).
+
 **v1.0.0** — clean release. `image-quality-checker` → `media-quality-checker`. Convention §uyumlu refactor:
 - click subcommand → argparse + standart flag'ler
 - Tek-dosya `check IMG` → toplu `find_quality_issues(directory)` (recursive)
