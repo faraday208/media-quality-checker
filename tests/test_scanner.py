@@ -39,6 +39,22 @@ def test_collect_filters_by_ext(tmp_path: Path):
     assert [p.name for p in out] == ["a.jpg"]
 
 
+def test_collect_skips_rejected_and_report_dirs(tmp_path):
+    """Recursive scan _rejected/report klasörlerini atlar."""
+    (tmp_path / "keep.jpg").write_bytes(b"x")
+    (tmp_path / "_rejected" / "03-quality").mkdir(parents=True)
+    (tmp_path / "_rejected" / "03-quality" / "elenen.jpg").write_bytes(b"x")
+    (tmp_path / "report").mkdir()
+    (tmp_path / "report" / "rapor.jpg").write_bytes(b"x")
+    (tmp_path / "sub").mkdir()
+    (tmp_path / "sub" / "deep.jpg").write_bytes(b"x")
+    names = [p.name for p in collect_images(tmp_path, recursive=True)]
+    assert "keep.jpg" in names
+    assert "deep.jpg" in names
+    assert "elenen.jpg" not in names
+    assert "rapor.jpg" not in names
+
+
 # ---------- _resolve_checks ----------
 
 def test_resolve_checks_all_keyword():
