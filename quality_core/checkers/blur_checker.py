@@ -32,6 +32,15 @@ class BlurChecker:
     def __init__(self, config: Dict[str, Any]):
         quality_config = config.get('quality', {})
         self.threshold = quality_config.get('blur_threshold', 100)
+        # Blur ölçüm yöntemi:
+        #   'tile'   (default) — görseli grid'e böl, EN KESKİN bölgeleri baz al.
+        #            Bokeh/DoF arkaplan keskin özneyi cezalandırmaz (false-positive'i
+        #            önler). "Görselin bir yeri keskin mi?" sorusu.
+        #   'global' — tüm görselin Laplacian variance'ı (eski davranış). Bulanık
+        #            arkaplan skoru düşürür → bokeh portreleri yanlışlıkla eleyebilir.
+        self.method = quality_config.get('blur_method', 'tile')
+        self.grid = int(quality_config.get('blur_grid', 4))          # 4x4 = 16 tile
+        self.top_k = int(quality_config.get('blur_top_k', 4))        # en keskin 4 tile
 
     def check(self, image_path: str | Path) -> BlurResult:
         """
@@ -65,9 +74,8 @@ class BlurChecker:
             if img is None:
                 return error_result("cannot_read_image")
 
-            # Laplacian variance hesapla
-            laplacian = cv2.Laplacian(img, cv2.CV_64F)
-            blur_score = laplacian.var()
+            # Blur skoru — yöntem'e göre (tile: en keskin bölge / global: tüm görsel)
+            blur_score = self._compute_blur_score(img)
 
             # Değerlendir
             is_blurry = bool(blur_score < self.threshold)
@@ -85,6 +93,28 @@ class BlurChecker:
         except Exception as e:
             return error_result(f"error: {str(e)[:50]}")
 
+    def _compute_blur_score(self, img: np.ndarray) -> float:
+        """Laplacian variance — yöntem'e göre. 'global' tüm görsel; 'tile' grid'e
+        bölüp en keskin top_k tile'ın ortalaması (bokeh arkaplan özneyi
+        cezalandırmaz)."""
+        if self.method == 'global' or self.grid <= 1:
+            return round(float(cv2.Laplacian(img, cv2.CV_64F).var()), 2)
+
+        h, w = img.shape[:2]
+        th, tw = h // self.grid, w // self.grid
+        # Tile'lar çok küçükse (variance gürültülü/anlamsız) global'e düş
+        if th < 8 or tw < 8:
+            return round(float(cv2.Laplacian(img, cv2.CV_64F).var()), 2)
+
+        scores: List[float] = []
+        for i in range(self.grid):
+            for j in range(self.grid):
+                tile = img[i * th:(i + 1) * th, j * tw:(j + 1) * tw]
+                scores.append(float(cv2.Laplacian(tile, cv2.CV_64F).var()))
+        scores.sort(reverse=True)
+        k = max(1, min(self.top_k, len(scores)))
+        return round(sum(scores[:k]) / k, 2)
+
     def check_directory(self, directory: str | Path, limit: int = 0) -> List[BlurResult]:
         """Klasördeki tüm görselleri kontrol et."""
         dir_path = Path(directory)
@@ -98,7 +128,11 @@ class BlurChecker:
 
     def get_config_summary(self) -> Dict[str, Any]:
         """Config özeti."""
-        return {
+        summary = {
             "blur_threshold": self.threshold,
-            "method": "laplacian_variance"
+            "method": f"laplacian_variance/{self.method}",
         }
+        if self.method == 'tile':
+            summary["grid"] = self.grid
+            summary["top_k"] = self.top_k
+        return summary
