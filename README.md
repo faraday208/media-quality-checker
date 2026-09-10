@@ -13,6 +13,28 @@
 
 ---
 
+## English
+
+**What it does.** Filters an image dataset on four quality metrics: blur (Laplacian variance), brightness, contrast and bits-per-pixel. Runs them as a composite check and can move low-quality files to `/rejected` or delete them.
+
+**Install**
+
+```bash
+git clone https://github.com/faraday208/media-quality-checker
+cd media-quality-checker
+uv sync
+```
+
+**Basic usage**
+
+```bash
+uv run python run.py -i ./dataset
+```
+
+Step **03** of the [`media-dataset-prep`](https://github.com/faraday208/media-dataset-prep) pipeline; also works standalone. The detailed documentation below is in Turkish.
+
+---
+
 ## 🎯 Ne yapıyor?
 
 Composite quality kontrolü — 4 metric:
